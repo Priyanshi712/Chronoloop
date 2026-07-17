@@ -9,68 +9,116 @@ import {
   TouchableOpacity,
   TextInput,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
-import { spacing, fontSize } from '../theme/spacing';
+import { spacing, fontSize, fonts, radius, shadow } from '../theme/spacing';
 import { useTracker } from '../context/TrackerContext';
+import AnimatedButton from '../components/AnimatedButton';
+
+const CARD_COLORS = [colors.purple, colors.mint, colors.orange, colors.pink, colors.yellow, colors.blue];
 
 export default function TrackerScreen() {
   const { trackers, addTracker, toggleTracker, deleteTracker } = useTracker();
   const [newHabit, setNewHabit] = useState('');
+  const [inputVisible, setInputVisible] = useState(false);
 
   const handleAdd = () => {
     if (newHabit.trim().length === 0) return;
     addTracker(newHabit.trim());
     setNewHabit('');
+    setInputVisible(false);
   };
 
   const completedCount = trackers.filter((t) => t.done).length;
+  const progressPercent = trackers.length > 0 ? completedCount / trackers.length : 0;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Trackers</Text>
+      <Text style={styles.heading}>Habit Tracker</Text>
       <Text style={styles.subtitle}>
         {completedCount} of {trackers.length} completed today
       </Text>
 
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="Add a new habit..."
-          placeholderTextColor={colors.textMuted}
-          value={newHabit}
-          onChangeText={setNewHabit}
-          onSubmitEditing={handleAdd}
-        />
-        <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
+      {/* Progress bar */}
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${progressPercent * 100}%` }]} />
       </View>
 
       <FlatList
         data={trackers}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[styles.trackerCard, item.done && styles.trackerCardDone]}
-            onPress={() => toggleTracker(item.id)}
-            onLongPress={() => deleteTracker(item.id)}
-          >
-            <View style={[styles.checkbox, item.done && styles.checkboxDone]}>
-              {item.done && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <Text
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item, index }) => {
+          const cardColor = CARD_COLORS[index % CARD_COLORS.length];
+          return (
+            <AnimatedButton
               style={[
-                styles.trackerText,
-                item.done && styles.trackerTextDone,
+                styles.trackerCard,
+                { backgroundColor: item.done ? cardColor : colors.surfaceElevated },
               ]}
+              onPress={() => toggleTracker(item.id)}
             >
-              {item.title}
-            </Text>
-          </TouchableOpacity>
-        )}
+              <View style={styles.trackerRow}>
+                <View
+                  style={[
+                    styles.checkbox,
+                    item.done && styles.checkboxDone,
+                    item.done && { borderColor: colors.onPastelText },
+                  ]}
+                >
+                  {item.done && (
+                    <Ionicons name="checkmark" size={16} color={colors.onPastelText} />
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.trackerText,
+                    { color: item.done ? colors.onPastelText : colors.textPrimary },
+                    item.done && styles.trackerTextDone,
+                  ]}
+                >
+                  {item.title}
+                </Text>
+                <TouchableOpacity onPress={() => deleteTracker(item.id)} hitSlop={10}>
+                  <Ionicons
+                    name="close"
+                    size={18}
+                    color={item.done ? colors.onPastelTextMuted : colors.textMuted}
+                  />
+                </TouchableOpacity>
+              </View>
+            </AnimatedButton>
+          );
+        }}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No habits yet. Add one above.</Text>
+          <Text style={styles.emptyText}>No habits yet. Add one below.</Text>
+        }
+        ListFooterComponent={
+          inputVisible ? (
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.input}
+                placeholder="Add a new habit..."
+                placeholderTextColor={colors.textMuted}
+                value={newHabit}
+                onChangeText={setNewHabit}
+                onSubmitEditing={handleAdd}
+                autoFocus
+              />
+              <TouchableOpacity style={styles.confirmButton} onPress={handleAdd}>
+                <Ionicons name="checkmark" size={20} color={colors.onPastelText} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.addNewButton}
+              onPress={() => setInputVisible(true)}
+            >
+              <Ionicons name="add" size={20} color={colors.textSecondary} />
+              <Text style={styles.addNewText}>Add new habit</Text>
+            </TouchableOpacity>
+          )
         }
       />
     </View>
@@ -85,67 +133,46 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xxl,
   },
   heading: {
+    fontFamily: fonts.bold,
     fontSize: fontSize.heading,
-    fontWeight: '700',
     color: colors.textPrimary,
   },
   subtitle: {
+    fontFamily: fonts.regular,
     fontSize: fontSize.small,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceElevated,
+    overflow: 'hidden',
     marginBottom: spacing.lg,
   },
-  inputRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: fontSize.body,
-    color: colors.textPrimary,
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addButtonText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.heading,
-    fontWeight: '400',
-    marginTop: -2,
+  progressFill: {
+    height: '100%',
+    borderRadius: radius.full,
+    backgroundColor: colors.mint,
   },
   list: {
     paddingBottom: spacing.xl,
   },
   trackerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.sm,
+    ...shadow.soft,
   },
-  trackerCardDone: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
+  trackerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
+    width: 26,
+    height: 26,
+    borderRadius: radius.sm,
     borderWidth: 2,
     borderColor: colors.border,
     alignItems: 'center',
@@ -153,27 +180,63 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   checkboxDone: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  checkmark: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   trackerText: {
+    fontFamily: fonts.medium,
     fontSize: fontSize.body,
-    color: colors.textPrimary,
     flex: 1,
   },
   trackerTextDone: {
-    color: colors.textSecondary,
     textDecorationLine: 'line-through',
   },
   emptyText: {
     textAlign: 'center',
     color: colors.textMuted,
+    fontFamily: fonts.regular,
     marginTop: spacing.xl,
     fontSize: fontSize.body,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    fontFamily: fonts.regular,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
+  },
+  confirmButton: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.lg,
+    backgroundColor: colors.mint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addNewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    paddingVertical: spacing.md,
+    marginTop: spacing.sm,
+  },
+  addNewText: {
+    fontFamily: fonts.medium,
+    fontSize: fontSize.body,
+    color: colors.textSecondary,
   },
 });
