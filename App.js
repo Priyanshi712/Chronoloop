@@ -1,20 +1,18 @@
+// App.js
+
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import AppNavigator from './src/navigation/AppNavigator';
+import { FocusProvider } from './src/context/FocusContext';
+import { TrackerProvider } from './src/context/TrackerContext';
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <FocusProvider>
+      <TrackerProvider>
+        <StatusBar style="dark" />
+        <AppNavigator />
+      </TrackerProvider>
+    </FocusProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
