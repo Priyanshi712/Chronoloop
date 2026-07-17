@@ -14,6 +14,7 @@ import { colors } from '../theme/colors';
 import { spacing, fontSize, fonts, radius, shadow } from '../theme/spacing';
 import { useFocus } from '../context/FocusContext';
 import ProgressRing from '../components/ProgressRing';
+import AnimatedButton from '../components/AnimatedButton';
 
 const PRESET_MINUTES = [15, 25, 45, 60];
 const DEFAULT_MINUTES = 25;
@@ -31,7 +32,7 @@ export default function PomodoroScreen() {
   const totalSeconds = durationMinutes * 60;
   const progress = 1 - secondsLeft / totalSeconds;
 
-  // Effect 1: Purely handles the countdown ticking
+  // Countdown ticking
   useEffect(() => {
     if (isRunning) {
       intervalRef.current = setInterval(() => {
@@ -49,7 +50,7 @@ export default function PomodoroScreen() {
     return () => clearInterval(intervalRef.current);
   }, [isRunning]);
 
-  // Effect 2: Reacts to secondsLeft changes, updates context safely (after render)
+  // Context updates, safely after render
   useEffect(() => {
     if (!isRunning) return;
 
@@ -101,11 +102,13 @@ export default function PomodoroScreen() {
     <View style={styles.container}>
       <Text style={styles.label}>FOCUS SESSION</Text>
 
-      <ProgressRing size={280} strokeWidth={10} progress={progress} color={colors.mint}>
-        <View style={styles.ringInner}>
-          <Text style={styles.timerText}>{formatTime(secondsLeft)}</Text>
-        </View>
-      </ProgressRing>
+      <View style={styles.ringWrapper}>
+        <ProgressRing size={280} strokeWidth={10} progress={progress} color={colors.mint}>
+          <View style={styles.ringInner}>
+            <Text style={styles.timerText}>{formatTime(secondsLeft)}</Text>
+          </View>
+        </ProgressRing>
+      </View>
 
       <TouchableOpacity
         style={styles.durationPill}
@@ -116,13 +119,13 @@ export default function PomodoroScreen() {
       </TouchableOpacity>
 
       <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleReset}>
+        <AnimatedButton style={styles.secondaryButton} onPress={handleReset}>
           <Text style={styles.secondaryButtonText}>Reset</Text>
-        </TouchableOpacity>
+        </AnimatedButton>
 
-        <TouchableOpacity style={styles.primaryButton} onPress={handleStartPause}>
+        <AnimatedButton style={styles.primaryButton} onPress={handleStartPause}>
           <Text style={styles.primaryButtonText}>{isRunning ? 'Pause' : 'Start'}</Text>
-        </TouchableOpacity>
+        </AnimatedButton>
       </View>
 
       {sessionHistory.length > 0 && (
@@ -215,6 +218,11 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: spacing.xl,
   },
+  ringWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+  },
   ringInner: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -229,7 +237,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.full,
-    marginTop: spacing.xl,
     marginBottom: spacing.xxl,
   },
   durationPillText: {
