@@ -7,20 +7,28 @@ const FocusContext = createContext();
 export function FocusProvider({ children }) {
   const [todayFocusSeconds, setTodayFocusSeconds] = useState(0);
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
+  const [sessionHistory, setSessionHistory] = useState([]);
 
-  // Har second call hoga jab timer chal raha ho
   const addFocusSecond = () => {
     setTodayFocusSeconds((prev) => prev + 1);
   };
 
-  // Jab ek pura 25-min session complete ho
-  const completeSession = () => {
+  const completeSession = (durationMinutes) => {
     setSessionsCompleted((prev) => prev + 1);
+    setSessionHistory((prev) => [
+      {
+        id: Date.now().toString(),
+        durationMinutes,
+        completedAt: new Date(),
+      },
+      ...prev,
+    ]);
   };
 
   const resetToday = () => {
     setTodayFocusSeconds(0);
     setSessionsCompleted(0);
+    setSessionHistory([]);
   };
 
   return (
@@ -28,6 +36,7 @@ export function FocusProvider({ children }) {
       value={{
         todayFocusSeconds,
         sessionsCompleted,
+        sessionHistory,
         addFocusSecond,
         completeSession,
         resetToday,

@@ -9,6 +9,7 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { colors } from '../theme/colors';
 import { spacing, fontSize, fonts, radius, shadow } from '../theme/spacing';
 import { useFocus } from '../context/FocusContext';
@@ -25,22 +26,20 @@ export default function PomodoroScreen() {
   const [customInput, setCustomInput] = useState('');
   const intervalRef = useRef(null);
 
-  const { addFocusSecond, completeSession } = useFocus();
+  const { addFocusSecond, completeSession, sessionHistory } = useFocus();
 
   const totalSeconds = durationMinutes * 60;
   const progress = 1 - secondsLeft / totalSeconds;
 
+  // Effect 1: Purely handles the countdown ticking
   useEffect(() => {
     if (isRunning) {
       intervalRef.current = setInterval(() => {
         setSecondsLeft((prev) => {
           if (prev <= 1) {
             clearInterval(intervalRef.current);
-            setIsRunning(false);
-            completeSession();
             return 0;
           }
-          addFocusSecond();
           return prev - 1;
         });
       }, 1000);
@@ -50,13 +49,34 @@ export default function PomodoroScreen() {
     return () => clearInterval(intervalRef.current);
   }, [isRunning]);
 
+  // Effect 2: Reacts to secondsLeft changes, updates context safely (after render)
+  useEffect(() => {
+    if (!isRunning) return;
+
+    if (secondsLeft === 0) {
+      setIsRunning(false);
+      completeSession(durationMinutes);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else {
+      addFocusSecond();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secondsLeft]);
+
   const formatTime = (totalSeconds) => {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const handleStartPause = () => setIsRunning((prev) => !prev);
+  const formatClockTime = (date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleStartPause = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsRunning((prev) => !prev);
+  };
 
   const handleReset = () => {
     setIsRunning(false);
@@ -81,12 +101,9 @@ export default function PomodoroScreen() {
     <View style={styles.container}>
       <Text style={styles.label}>FOCUS SESSION</Text>
 
-      <ProgressRing size={280} strokeWidth={3} progress={progress}>
+      <ProgressRing size={280} strokeWidth={10} progress={progress} color={colors.mint}>
         <View style={styles.ringInner}>
           <Text style={styles.timerText}>{formatTime(secondsLeft)}</Text>
-          <Text style={styles.timerSubtext}>
-            {isRunning ? 'Stay focused' : 'Ready when you are'}
-          </Text>
         </View>
       </ProgressRing>
 
@@ -107,6 +124,23 @@ export default function PomodoroScreen() {
           <Text style={styles.primaryButtonText}>{isRunning ? 'Pause' : 'Start'}</Text>
         </TouchableOpacity>
       </View>
+
+      {sessionHistory.length > 0 && (
+        <View style={styles.historySection}>
+          <Text style={styles.historyTitle}>Recent Sessions</Text>
+          {sessionHistory.slice(0, 3).map((session) => (
+            <View key={session.id} style={styles.historyRow}>
+              <View style={styles.historyDot} />
+              <Text style={styles.historyText}>
+                {session.durationMinutes} min session
+              </Text>
+              <Text style={styles.historyTime}>
+                {formatClockTime(session.completedAt)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       <Modal
         visible={modalVisible}
@@ -171,8 +205,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xxl,
   },
   label: {
     fontFamily: fonts.semiBold,
@@ -190,16 +224,8 @@ const styles = StyleSheet.create({
     fontSize: fontSize.display,
     color: colors.textPrimary,
   },
-  timerSubtext: {
-    fontFamily: fonts.regular,
-    fontSize: fontSize.small,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-  },
   durationPill: {
-    backgroundColor: colors.glass,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    backgroundColor: colors.purple,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.full,
@@ -207,38 +233,76 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxl,
   },
   durationPillText: {
-    fontFamily: fonts.medium,
-    color: colors.textSecondary,
+    fontFamily: fonts.semiBold,
+    color: colors.onPastelText,
     fontSize: fontSize.small,
   },
   buttonRow: {
     flexDirection: 'row',
     gap: spacing.md,
+    marginBottom: spacing.xl,
   },
   primaryButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.orange,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: radius.full,
     ...shadow.soft,
   },
   primaryButtonText: {
-    fontFamily: fonts.semiBold,
-    color: colors.background,
+    fontFamily: fonts.bold,
+    color: colors.onPastelText,
     fontSize: fontSize.body,
   },
   secondaryButton: {
-    backgroundColor: colors.glass,
+    backgroundColor: colors.surfaceElevated,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.border,
   },
   secondaryButtonText: {
     fontFamily: fonts.semiBold,
     color: colors.textSecondary,
     fontSize: fontSize.body,
+  },
+  historySection: {
+    width: '100%',
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  historyTitle: {
+    fontFamily: fonts.semiBold,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  historyDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.mint,
+    marginRight: spacing.sm,
+  },
+  historyText: {
+    flex: 1,
+    fontFamily: fonts.regular,
+    fontSize: fontSize.small,
+    color: colors.textSecondary,
+  },
+  historyTime: {
+    fontFamily: fonts.regular,
+    fontSize: fontSize.small,
+    color: colors.textMuted,
   },
   modalOverlay: {
     flex: 1,
@@ -252,7 +316,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xl,
     borderTopWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.border,
   },
   modalTitle: {
     fontFamily: fonts.bold,
@@ -270,13 +334,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.border,
     alignItems: 'center',
-    backgroundColor: colors.glass,
+    backgroundColor: colors.surface,
   },
   presetChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.purple,
+    borderColor: colors.purple,
   },
   presetChipText: {
     fontFamily: fonts.semiBold,
@@ -284,7 +348,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body,
   },
   presetChipTextActive: {
-    color: colors.background,
+    color: colors.onPastelText,
   },
   customLabel: {
     fontFamily: fonts.regular,
@@ -299,10 +363,10 @@ const styles = StyleSheet.create({
   },
   customInput: {
     flex: 1,
-    backgroundColor: colors.glass,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.border,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontFamily: fonts.regular,
@@ -310,15 +374,15 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   customApplyButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.purple,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   customApplyText: {
-    fontFamily: fonts.semiBold,
-    color: colors.background,
+    fontFamily: fonts.bold,
+    color: colors.onPastelText,
     fontSize: fontSize.body,
   },
   modalCloseButton: {

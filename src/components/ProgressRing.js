@@ -5,7 +5,13 @@ import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { colors } from '../theme/colors';
 
-export default function ProgressRing({ size = 280, strokeWidth = 3, progress = 0, children }) {
+export default function ProgressRing({
+  size = 280,
+  strokeWidth = 10,
+  progress = 0,
+  color = colors.mint,
+  children,
+}) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - progress * circumference;
@@ -27,7 +33,7 @@ export default function ProgressRing({ size = 280, strokeWidth = 3, progress = 0
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={colors.primary}
+          stroke={color}
           strokeWidth={strokeWidth}
           fill="none"
           strokeDasharray={circumference}
